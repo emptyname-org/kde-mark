@@ -1,0 +1,48 @@
+[Desktop Entry]
+Type=Service
+Name=Mark
+MimeType=all/all;
+Actions=red;orange;yellow;green;blue;purple;grey;clear;
+X-KDE-Submenu=Mark
+X-KDE-Protocols=file
+Icon=tag
+
+[Desktop Action red]
+Name=Red
+Icon=mark-color-red
+Exec=python3 "@CMAKE_INSTALL_FULL_DATADIR@/kde-mark/mark.py" --toggle red -- %F
+
+[Desktop Action orange]
+Name=Orange
+Icon=mark-color-orange
+Exec=python3 "@CMAKE_INSTALL_FULL_DATADIR@/kde-mark/mark.py" --toggle orange -- %F
+
+[Desktop Action yellow]
+Name=Yellow
+Icon=mark-color-yellow
+Exec=python3 "@CMAKE_INSTALL_FULL_DATADIR@/kde-mark/mark.py" --toggle yellow -- %F
+
+[Desktop Action green]
+Name=Green
+Icon=mark-color-green
+Exec=python3 "@CMAKE_INSTALL_FULL_DATADIR@/kde-mark/mark.py" --toggle green -- %F
+
+[Desktop Action blue]
+Name=Blue
+Icon=mark-color-blue
+Exec=python3 "@CMAKE_INSTALL_FULL_DATADIR@/kde-mark/mark.py" --toggle blue -- %F
+
+[Desktop Action purple]
+Name=Purple
+Icon=mark-color-purple
+Exec=python3 "@CMAKE_INSTALL_FULL_DATADIR@/kde-mark/mark.py" --toggle purple -- %F
+
+[Desktop Action grey]
+Name=Grey
+Icon=mark-color-grey
+Exec=python3 "@CMAKE_INSTALL_FULL_DATADIR@/kde-mark/mark.py" --toggle grey -- %F
+
+[Desktop Action clear]
+Name=Clear marks
+Icon=edit-clear
+Exec=python3 "@CMAKE_INSTALL_FULL_DATADIR@/kde-mark/mark.py" --clear -- %F
