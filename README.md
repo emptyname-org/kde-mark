@@ -17,7 +17,7 @@ Debian 13 / amd64 packages:
 https://github.com/emptyname-org/kde-mark/releases
 
 ```sh
-sudo apt install ./kde-mark_0.1.0_amd64.deb
+sudo apt install ./kde-mark_0.1.1_amd64.deb
 ```
 
 Restart Dolphin, then right-click a local file and choose **Mark**. If the menu

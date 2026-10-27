@@ -2,6 +2,7 @@
 
 #include <KOverlayIconPlugin>
 #include <QCache>
+#include <QElapsedTimer>
 #include <QProcess>
 #include <QQueue>
 #include <QSet>
@@ -23,12 +24,15 @@ private Q_SLOTS:
 private:
     struct Entry {
         QStringList icons;
+        qint64 checkedAt;
     };
     void enqueue(const QUrl &url);
     void startBatch();
     void finishBatch(bool success);
 
     QCache<QUrl, Entry> m_cache{4096};
+    QCache<QUrl, qint64> m_retryAfter{4096};
+    QElapsedTimer m_clock;
     QQueue<QUrl> m_queue;
     QSet<QUrl> m_pending;
     QList<QUrl> m_batch;
@@ -40,5 +44,4 @@ private:
     QByteArray m_output;
     QString m_helper;
     bool m_failed = false;
-    bool m_notifying = false;
 };

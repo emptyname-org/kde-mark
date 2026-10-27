@@ -6,8 +6,11 @@
 #include <QJsonObject>
 #include <QStandardPaths>
 
+static constexpr qint64 refreshInterval = 5000;
+
 MarkOverlay::MarkOverlay()
 {
+    m_clock.start();
     m_helper = QStandardPaths::locate(QStandardPaths::GenericDataLocation,
                                      QStringLiteral("kde-mark/mark.py"));
     m_timeout.setSingleShot(true);
@@ -59,7 +62,8 @@ QStringList MarkOverlay::getOverlays(const QUrl &url)
     }
     if (const auto *entry = m_cache.object(url)) {
         const auto icons = entry->icons;
-        if (!m_notifying) {
+        // Repaints can be queued after overlaysChanged has returned.
+        if (m_clock.elapsed() - entry->checkedAt >= refreshInterval) {
             enqueue(url);
         }
         return icons;
@@ -70,6 +74,12 @@ QStringList MarkOverlay::getOverlays(const QUrl &url)
 
 void MarkOverlay::enqueue(const QUrl &url)
 {
+    if (const auto *retryAfter = m_retryAfter.object(url)) {
+        if (m_clock.elapsed() < *retryAfter) {
+            return;
+        }
+        m_retryAfter.remove(url);
+    }
     if (m_pending.contains(url) || m_pending.size() >= 8192) {
         return;
     }
@@ -107,7 +117,7 @@ void MarkOverlay::finishBatch(bool success)
     m_timeout.stop();
     m_output += m_process.readAllStandardOutput();
     const auto document = QJsonDocument::fromJson(m_output);
-    success = success && document.isArray();
+    success = success && m_output.size() <= 1024 * 1024 && document.isArray();
     QHash<QUrl, QStringList> results;
     const QStringList colors{QStringLiteral("red"), QStringLiteral("orange"), QStringLiteral("yellow"),
                              QStringLiteral("green"), QStringLiteral("blue"), QStringLiteral("purple"),
@@ -147,14 +157,16 @@ void MarkOverlay::finishBatch(bool success)
             enqueue(url);
         } else if (results.contains(url)) {
             const auto icons = results.value(url);
+            const auto *previous = m_cache.object(url);
+            const bool changed = previous ? previous->icons != icons : !icons.isEmpty();
             m_retries.remove(url);
-            m_cache.insert(url, new Entry{icons});
-            m_notifying = true;
-            Q_EMIT overlaysChanged(url, icons);
-            m_notifying = false;
+            m_retryAfter.remove(url);
+            m_cache.insert(url, new Entry{icons, m_clock.elapsed()});
+            if (changed) {
+                Q_EMIT overlaysChanged(url, icons);
+            }
         } else {
-            // Failure is never recorded as an unmarked file.
-            m_cache.remove(url);
+            // Preserve the last known marks; failures are not empty results.
             const int retries = m_retries.value(url) + 1;
             if (retries < 3) {
                 m_retries.insert(url, retries);
@@ -162,6 +174,7 @@ void MarkOverlay::finishBatch(bool success)
                 retrying = true;
             } else {
                 m_retries.remove(url);
+                m_retryAfter.insert(url, new qint64(m_clock.elapsed() + refreshInterval));
             }
         }
     }
@@ -178,10 +191,13 @@ void MarkOverlay::invalidate(const QStringList &paths)
         }
         const QUrl url = QUrl::fromLocalFile(path);
         // Ignore notifications for files this view has never requested.
-        if (!m_cache.contains(url) && !m_pending.contains(url)) {
+        if (!m_cache.contains(url) && !m_pending.contains(url) && !m_retryAfter.contains(url)) {
             continue;
         }
-        m_cache.remove(url);
+        m_retryAfter.remove(url);
+        if (auto *entry = m_cache.object(url)) {
+            entry->checkedAt = -refreshInterval;
+        }
         if (m_batch.contains(url)) {
             m_invalidated.insert(url);
         } else {
